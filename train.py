@@ -1,8 +1,10 @@
-# kits23_aru_gd_full_in_memory.py
-# Adapted to load entire HDF5 datasets into RAM (no chunking) and to print GPU/CPU usage info.
-# This version ALLOWS TensorFlow to allocate the GPU memory fully (no memory growth) and DOES NOT use mixed precision.
+# train.py
+# ARU-GD training script for KiTS23 HDF5 datasets (full in-memory loading).
+# This version allows TensorFlow to allocate GPU memory fully and does not use mixed precision.
 
 import os
+import argparse
+from pathlib import Path
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import tensorflow as tf
@@ -33,7 +35,6 @@ class MonteCarloDropout(Dropout):
 # ------------------------------------------------------------
 # GPU memory limit to match shard allocation (10 shards ≈ 10GB)
 # ------------------------------------------------------------
-import tensorflow as tf
 
 SHARD_COUNT = 20          # <-- IMPORTANT
 TOTAL_SHARDS = 94         # Do not change
@@ -57,9 +58,24 @@ if physical_gpus:
 # =============================================================================
 # 1. CONFIGURATION
 # =============================================================================
-TRAIN_HDF5_PATH = '/home/tanmoyhazra/h5_kidney_dataset_monai/train_data.h5'
-VALID_HDF5_PATH = '/home/tanmoyhazra/h5_kidney_dataset_monai/valid_data.h5'
-TEST_HDF5_PATH  = '/home/tanmoyhazra/h5_kidney_dataset_monai/test_data.h5'
+# Paths can be overridden via CLI flags or environment variables.
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train ARU-GD with Monte Carlo Dropout on KiTS23.")
+    parser.add_argument("--data-dir", default=os.environ.get("KITS23_DATA_DIR", "data"))
+    parser.add_argument("--train-hdf5", default=os.environ.get("TRAIN_HDF5_PATH"))
+    parser.add_argument("--valid-hdf5", default=os.environ.get("VALID_HDF5_PATH"))
+    parser.add_argument("--test-hdf5", default=os.environ.get("TEST_HDF5_PATH"))
+    parser.add_argument("--output-dir", default=os.environ.get("KITS23_OUTPUT_DIR", "saved_model"))
+    parser.add_argument("--model-save-path", default=os.environ.get("MODEL_SAVE_PATH"))
+    return parser.parse_args()
+
+
+args = parse_args()
+data_dir = Path(args.data_dir)
+
+TRAIN_HDF5_PATH = args.train_hdf5 or str(data_dir / "train_data.h5")
+VALID_HDF5_PATH = args.valid_hdf5 or str(data_dir / "valid_data.h5")
+TEST_HDF5_PATH = args.test_hdf5 or str(data_dir / "test_data.h5")
 
 IMG_HEIGHT = 256
 IMG_WIDTH = 320
@@ -74,7 +90,10 @@ DROPOUT_RATE = 0.2
 
 LOSS_WEIGHTS_VEC = tf.constant([0.5, 1.0, 3.0, 2.0], dtype=tf.float32)
 
-MODEL_SAVE_PATH = "/home/tanmoyhazra/h5_kidney_dataset_monai/saved_model/kits23_arunet_model_v2.h5"
+MODEL_SAVE_PATH = args.model_save_path or str(Path(args.output_dir) / "kits23_arunet_model_v2.h5")
+model_dir = os.path.dirname(MODEL_SAVE_PATH)
+if model_dir:
+    os.makedirs(model_dir, exist_ok=True)
 
 # =============================================================================
 # 2. LOAD ENTIRE HDF5 INTO RAM

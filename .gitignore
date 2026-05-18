@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.h5
+*.hdf5
+*.ckpt
+.ipynb_checkpoints/
+venv/
+.env
+outputs/
+predictions/
+logs/
+results/
+saved_model/
