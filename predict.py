@@ -1,20 +1,21 @@
 """
-evaluate_kits23_arunet.py
+predict.py
 
 Run:
-    python evaluate_kits23_arunet.py
+    python predict.py
 
 Requirements:
     - tensorflow (same major version used for training)
     - h5py
     - numpy
     - matplotlib
-    - opencv-python (cv2) optional but used for nicer saving; matplotlib alone works too.
 """
 
 import os
 import random
 import math
+import argparse
+from pathlib import Path
 import numpy as np
 import h5py
 import tensorflow as tf
@@ -29,9 +30,22 @@ from tensorflow.keras.layers import Dropout
 # -----------------------
 # CONFIG
 # -----------------------
-TEST_HDF5_PATH = "/home/tanmoyhazra/h5_kidney_dataset_monai/test_data.h5"
-MODEL_PATH = "/home/tanmoyhazra/h5_kidney_dataset_monai/saved_model/kits23_arunet_model_v2.h5"
-OUT_DIR = "/home/tanmoyhazra/h5_kidney_dataset_monai/predicted_images_v5_5/"
+# Paths can be overridden via CLI flags or environment variables.
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run MC Dropout inference and uncertainty estimation.")
+    parser.add_argument("--data-dir", default=os.environ.get("KITS23_DATA_DIR", "data"))
+    parser.add_argument("--test-hdf5", default=os.environ.get("TEST_HDF5_PATH"))
+    parser.add_argument("--model-path", default=os.environ.get("MODEL_PATH"))
+    parser.add_argument("--output-dir", default=os.environ.get("KITS23_OUTPUT_DIR", "outputs/predictions"))
+    return parser.parse_args()
+
+
+args = parse_args()
+data_dir = Path(args.data_dir)
+
+TEST_HDF5_PATH = args.test_hdf5 or str(data_dir / "test_data.h5")
+MODEL_PATH = args.model_path or str(Path("saved_model") / "kits23_arunet_model_v2.h5")
+OUT_DIR = args.output_dir
 
 NUM_CLASSES = 4  # as used in training
 IMG_CHANNELS = 1
